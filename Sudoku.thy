@@ -50,4 +50,27 @@ lemma "\<not>(
 end
 
 
+locale XSudoku = Sudoku +
+
+  fixes main_diag :: "cell \<Rightarrow> cell \<Rightarrow> bool"
+  assumes Reflexive_Main_Diag:  "\<forall>c::cell.(main_diag c c)"
+  assumes Symmetric_Main_Diag:  "\<forall>c1 c2::cell.(main_diag c1 c2 \<longrightarrow> main_diag c2 c1)"
+  assumes Transitive_Main_Diag: "\<forall>c1 c2 c3::cell.(main_diag c1 c2 \<and> main_diag c2 c3 \<longrightarrow> main_diag c1 c3)"
+  assumes At_Most_One_Per_Main_Diag:  "\<forall>c1 c2::cell.(main_diag c1 c2 \<and> s c1 = s c2 \<longrightarrow> c1 = c2)"
+
+  (*Can't unify both since transtivity would merged them into 'one big x-like' diagonal!!!*)
+  fixes side_diag :: "cell \<Rightarrow> cell \<Rightarrow> bool"
+  assumes Reflexive_Side_Diag:  "\<forall>c::cell.(side_diag c c)"
+  assumes Symmetric_Side_Diag:  "\<forall>c1 c2::cell.(side_diag c1 c2 \<longrightarrow> side_diag c2 c1)"
+  assumes Transitive_Side_Diag: "\<forall>c1 c2 c3::cell.(side_diag c1 c2 \<and> side_diag c2 c3 \<longrightarrow> side_diag c1 c3)"
+  assumes At_Most_One_Per_Side_Diag: "\<forall>c1 c2::cell.(side_diag c1 c2 \<and> s c1 = s c2 \<longrightarrow> c1 = c2)"
+
+begin
+
+end
+
+  
+
+
+
 end
