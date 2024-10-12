@@ -11,7 +11,7 @@ text \<open>
 text \<open>
   A classical Sudoku is just a RegionGridGame that has the rules that each row/column must have exactly one
   copy of each element of the Result set; that each grid can have at most (this is a sufficient condition)
-  one copy of each element from the Result set along side one constraint.
+  one copy of each element from the Result set along side one constraint - number set and resulting set are same.
 \<close>
 
 locale Sudoku = RegionGridGame +
@@ -82,12 +82,12 @@ locale Sudoku9 = Sudoku +
   constrains circ :: "cell \<Rightarrow> number"
   constrains region :: "number \<Rightarrow> number \<Rightarrow> bool"
 
-  assumes Const_Grid: "\<rr> one two \<and>
-                       \<rr> two three \<and>
-                       \<rr> four five \<and>
-                       \<rr> five six \<and>
-                       \<rr> seven eight \<and>
-                       \<rr> eight nine"
+  assumes Const_Grid: "\<rr> \<one> \<two> \<and>
+                       \<rr> \<two> \<three> \<and>
+                       \<rr> \<four> \<five> \<and>
+                       \<rr> \<five> \<six> \<and>
+                       \<rr> \<seven> \<eight> \<and>
+                       \<rr> \<eight> \<nine>"
 
 begin
 lemma "\<not>(
@@ -106,39 +106,91 @@ lemma "\<not>(
   nitpick[expect=genuine]
   oops
 end
-
-text \<open>
-  
-\<close>
-
-locale KillerSudoku = Sudoku + 
-  fixes cage :: "(('a \<times> 'a) list \<Rightarrow> number) \<Rightarrow> bool" ("\<cc>")
   
 
 text \<open>
   SudokuX is basically a normal sudoku with added constraint that both main and side diagonal is considered
   a grid. Here we had to introduce two new grids (\<mm> and \<ss>) since the central square (that would be
   square (5, 5) in Sudoku9) which is a part of both diagonals, would merge them into one big grid due
-  to transitivity of both gird-diagonals
+  to transitivity of both gird-diagonals.
+
+  Const_Main_Diag: is just a fancy way to say that all squares in that diagonal are (i, i)
+
+  Side_Diag_Symmetry1/2: is just a fancy way to say all squares in that diagonal are (i, n-i)
 \<close>
 locale SudokuX = Sudoku + 
-  fixes mainDiag :: "number \<Rightarrow> number \<Rightarrow> bool" ("\<mm>")
-  fixes sideDiag :: "number \<Rightarrow> number \<Rightarrow> bool" ("\<ss>")
+  fixes mainDiag :: "('a \<times> 'a) \<Rightarrow> ('a \<times> 'a) \<Rightarrow> bool" ("\<mm>")
+  fixes sideDiag :: "('a \<times> 'a) \<Rightarrow> ('a \<times> 'a) \<Rightarrow> bool" ("\<ss>")
 
   assumes Reflexive_Main_Diag:  "\<forall>x.(\<mm> x x)"
   assumes Symmetric_Main_Diag:  "\<forall>x y.(\<mm> x y \<longrightarrow> \<mm> y x)"
   assumes Transitive_Main_Diag: "\<forall>x y z.(m x y \<and> \<mm> y z \<longrightarrow> \<mm> x z)"
 
+  assumes At_Most_One_Main_Diag: "\<forall>x1 y1 x2 y2::'a.(\<mm> (x1, y1) (x2, y2) \<and> \<circ> (x1, y1) = \<circ> (x2, y2) \<longrightarrow>
+                                                  x1 = x2 \<and> y1 = y2)"
+
+  assumes Const_Main_Diag: "\<forall>x1 y1 x2 y2::'a.(x1 \<noteq> y1 \<or> x2 \<noteq> y2 \<longrightarrow> \<not>\<mm> (x1, y1) (x2, y2))"
+
   assumes Reflexive_Side_Diag:  "\<forall>x.(\<ss> x x)"
   assumes Symmetric_Side_Diag:  "\<forall>x y.(\<ss> x y \<longrightarrow> \<ss> y x)"
   assumes Transitive_Side_Diag: "\<forall>x y z.(\<ss> x y \<and> \<ss> y z \<longrightarrow> \<ss> x z)"
+
+  assumes At_Most_One_Side_Diag: "\<forall>x1 y1 x2 y2::'a.(\<ss> (x1, y1) (x2, y2) \<and> \<circ> (x1, y1) = \<circ> (x2, y2) \<longrightarrow>
+                                                  x1 = x2 \<and> y1 = y2)"
+
+  assumes Side_Diag_Symmetry1: "\<forall>x1 y1 x2 y2::'a.(\<ss> (x1, y1) (x2, y2) \<longrightarrow> \<ss> (y1, x1) (x2, y2))"
+  assumes Side_Diag_Symmetry2: "\<forall>x1 y1 x2 y2::'a.(\<ss> (x1, y1) (x2, y2) \<longrightarrow> \<ss> (x1, y1) (y2, x2))"
+
+begin
+
+text \<open>
+  As before, we prove that lemmas that at least one element from the Resulting set needs to be in either one
+  of the fields in the diagonal.
+  The proofs are identical for both diagonals and are very similar to the analogous lemma in Sudoku locale, so we
+  shall not explicitly state them here. Instead we let our dear friend Isabelle do all the work for us.
+\<close>
+  
+  lemma At_Least_One_Main_Diag: "\<forall>x1 y1 x2 y2::'a.(\<mm> (x1, y1) (x2, y2) \<longrightarrow> (\<exists>z.(\<circ> (x1, y1) = z \<or> \<circ> (x2, y2) = z)))"
+    by blast
+
+  lemma At_Least_One_Side_Diag: "\<forall>x1 y1 x2 y2::'a.(\<ss> (x1, y1) (x2, y2) \<longrightarrow> (\<exists>z.(\<circ> (x1, y1) = z \<or> \<circ> (x2, y2) = z)))"
+    by blast
+
+end
+
+text \<open>
+  Another proof of concept.
+  
+  We can say that Sudoku9X is a model for both a Sudoku9 and SudokuX structures, thus evading the need to
+  write unnecessary constraints.
+
+   We only need one constraint for one of the diagonals, since the other one
+  will implicitly gain the same constraint.
+  
+  We make extra care not merge main and side diagonals!
+\<close>
+locale Sudoku9X = SudokuX + Sudoku9 +
+  constrains mainDiag :: "cell \<Rightarrow> cell \<Rightarrow> bool"
+
+  assumes Const_Main_Diag: "\<forall>x1 y1 x2 y2::number.(x1 \<noteq> y1 \<or> x2 \<noteq> y2 \<longrightarrow> \<not>\<mm> (x1, y1) (x2, y2))"
+  assumes Const_Side_Diag: "\<ss> (\<one>, \<nine>) (\<two>, \<eight>) \<and>
+                            \<ss> (\<two>, \<eight>) (\<three>, \<seven>) \<and>
+                            \<ss> (\<three>, \<seven>) (\<four>, \<six>) \<and>
+                            \<ss> (\<four>, \<six>) (\<five>, \<five>)"
+  
+begin
+
+(*TODO: Give example*)
+
+end
 
 
 locale JigSawSudoku = Sudoku +
   constrains region :: "('a \<times> 'a) \<Rightarrow> ('a \<times> 'a) \<Rightarrow> bool"
 
 
-
+locale KillerSudoku = Sudoku + 
+  fixes cage :: "(('a \<times> 'a) list \<Rightarrow> number) \<Rightarrow> bool" ("\<cc>")
 
 
 end
