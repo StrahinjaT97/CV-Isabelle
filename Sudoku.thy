@@ -1,34 +1,93 @@
 theory Sudoku
-  imports Main
+  imports Main GridGame
 begin
 
+text \<open>
+  Here we define a theory about Sudoku games. We first start of with an arbitrary nxn Sudoku game with
+  arbitrary style of grids/regions and then further on we define special cases of Sudoku games like
+  Killer Sudoku etc.
+\<close>
+
+text \<open>
+  A classical Sudoku is just a RegionGridGame that has the rules that each row/column must have exactly one
+  copy of each element of the Result set; that each grid can have at most (this is a sufficient condition)
+  one copy of each element from the Result set along side one constraint.
+\<close>
+
+locale Sudoku = RegionGridGame +
+  constrains circ :: "'a \<times> 'a \<Rightarrow> 'a"
+
+  assumes At_Most_One_Per_Row:  "\<forall>x y1 y2.(\<circ> (x, y1) = \<circ> (x, y2) \<longrightarrow> y1 = y2)"
+  assumes At_Most_One_Per_Col:  "\<forall>x1 x2 y.(\<circ> (x1, y) = \<circ> (x2, y) \<longrightarrow> x1 = x2)"
+  assumes At_Least_One_Per_Row: "\<forall>x z.\<exists>y.(\<circ> (x, y) = z)"
+  assumes At_Least_One_Per_Col: "\<forall>y z.\<exists>x.(\<circ> (x, y) = z)"
+  
+  assumes At_Most_One_Per_Grid: "\<forall>x1 x2 y1 y2.(\<rr> x1 x2 \<and> \<rr> y1 y2 \<and> \<circ> (x1, y1) = \<circ> (x2, y2) \<longrightarrow>
+                                 x1 = x2 \<and> y1 = y2)"
+
+
+begin
+
+text \<open>
+  We can now prove that the rule that each grid must have at least one copy of each element from the Result set
+  is implied by the given axioms of Sudoku.
+\<close>
+lemma At_Least_One_Per_Grid: "\<forall>x y.(\<rr> x y \<longrightarrow> (\<exists>z.(\<circ> (x, y) = z)))"
+  by blast
+
+text \<open>
+  Even tho blast made a short work out of the previous lemma, since this is an exemplary program to showcase
+  my work, I provided a human written proof.
+\<close>
+lemma At_Least_One_Per_Grid_Alone: "\<forall>x y.(\<rr> x y \<longrightarrow> (\<exists>z.(\<circ> (x, y) = z)))"
+proof
+  fix x
+  show "\<forall>y.(\<rr> x y \<longrightarrow> (\<exists>z.(\<circ> (x, y) = z)))"
+  proof
+    fix y
+    show "\<rr> x y \<longrightarrow> (\<exists>z.(\<circ> (x, y) = z))"
+    proof
+      assume r: "\<rr> x y"
+      show "\<exists>z.(\<circ> (x, y) = z)"
+      proof (rule ccontr)
+        assume "\<nexists>z.(\<circ> (x, y) = z)"
+        then have "\<forall>z.(\<circ> (x, y) \<noteq> z)"
+          by simp
+        then have a:"\<forall>z.\<nexists>x.(\<circ> (x, y) = z)"
+          by simp
+        have "\<forall>z.\<exists>x.(\<circ> (x, y) = z)"
+          using At_Least_One_Per_Col by simp
+        then show False
+          using a by simp
+      qed
+    qed
+  qed
+qed
+
+end
+
+text \<open>
+  Proof of concept that a real life sudoku is indeed a model of the  previous algebraic structure.
+
+  A Sudoku9 is nothing more than a model with added axiom for grid formation. Should have we used a 4x4
+  sudoku (Sudoku4 if we wanted to have a consistent naming scheme), Const_Grid axiom would be something like:
+  
+  assume Const_Grid: "\<rr> one two \<and> \<rr> three four"
+\<close>
+
 datatype number = one ("\<one>") | two ("\<two>") | three ("\<three>") | four ("\<four>") | five ("\<five>") | six ("\<six>") | seven ("\<seven>") | eight ("\<eight>") | nine ("\<nine>")
-
-
 type_synonym cell = "number \<times> number"
 
-locale Sudoku =
-  fixes s :: "cell \<Rightarrow> number"
+locale Sudoku9 = Sudoku +
+  constrains circ :: "cell \<Rightarrow> number"
+  constrains region :: "number \<Rightarrow> number \<Rightarrow> bool"
 
-  assumes At_Most_One_Per_Row: "\<forall>x y1 y2::number.(s (x, y1) = s (x, y2) \<longrightarrow> y1 = y2)"
-  assumes At_Most_One_Per_Col: "\<forall>y x1 x2::number.(s (x1, y) = s(x2, y) \<longrightarrow> x1 = x2)"
-  assumes At_Least_One_Per_Row: "\<forall>x z::number.\<exists>y::number.(s (x, y) = z)"
-  assumes At_Least_One_Per_Col: "\<forall>y z::number.\<exists>x::number.(s (x, y) = z)"
-
-  fixes grid :: "number \<Rightarrow> number \<Rightarrow> bool"
-  assumes Reflexive_Grid:  "\<forall>x::number.(grid x x)"
-  assumes Symmetric_Grid:  "\<forall>x y::number.(grid x y \<longrightarrow> grid y x)"
-  assumes Transitive_Grid: "\<forall>x y z::number.(grid x y \<and> grid y z \<longrightarrow> grid x z)"
-  assumes At_Most_One_Per_Grid: "\<forall>x1 x2 y1 y2::number.(grid x1 y1 \<and> grid x2 y2 \<and> s (x1, x2) = s (y1, y2) \<longrightarrow>
-                                 x1 = y1 \<and> x2 = y2)"
-
-  assumes Const_Grid: "grid one two \<and>
-                       grid two three \<and>
-                       grid four five \<and>
-                       grid five six \<and>
-                       grid seven eight \<and>
-                       grid eight nine"
-
+  assumes Const_Grid: "\<rr> one two \<and>
+                       \<rr> two three \<and>
+                       \<rr> four five \<and>
+                       \<rr> five six \<and>
+                       \<rr> seven eight \<and>
+                       \<rr> eight nine"
 
 begin
 lemma "\<not>(
@@ -46,30 +105,39 @@ lemma "\<not>(
 )"
   nitpick[expect=genuine]
   oops
-
 end
 
-
-locale XSudoku = Sudoku +
-
-  fixes main_diag :: "cell \<Rightarrow> cell \<Rightarrow> bool"
-  assumes Reflexive_Main_Diag:  "\<forall>c::cell.(main_diag c c)"
-  assumes Symmetric_Main_Diag:  "\<forall>c1 c2::cell.(main_diag c1 c2 \<longrightarrow> main_diag c2 c1)"
-  assumes Transitive_Main_Diag: "\<forall>c1 c2 c3::cell.(main_diag c1 c2 \<and> main_diag c2 c3 \<longrightarrow> main_diag c1 c3)"
-  assumes At_Most_One_Per_Main_Diag:  "\<forall>c1 c2::cell.(main_diag c1 c2 \<and> s c1 = s c2 \<longrightarrow> c1 = c2)"
-
-  (*Can't unify both since transtivity would merged them into 'one big x-like' diagonal!!!*)
-  fixes side_diag :: "cell \<Rightarrow> cell \<Rightarrow> bool"
-  assumes Reflexive_Side_Diag:  "\<forall>c::cell.(side_diag c c)"
-  assumes Symmetric_Side_Diag:  "\<forall>c1 c2::cell.(side_diag c1 c2 \<longrightarrow> side_diag c2 c1)"
-  assumes Transitive_Side_Diag: "\<forall>c1 c2 c3::cell.(side_diag c1 c2 \<and> side_diag c2 c3 \<longrightarrow> side_diag c1 c3)"
-  assumes At_Most_One_Per_Side_Diag: "\<forall>c1 c2::cell.(side_diag c1 c2 \<and> s c1 = s c2 \<longrightarrow> c1 = c2)"
-
-begin
-
-end
-
+text \<open>
   
+\<close>
+
+locale KillerSudoku = Sudoku + 
+  fixes cage :: "(('a \<times> 'a) list \<Rightarrow> number) \<Rightarrow> bool" ("\<cc>")
+  
+
+text \<open>
+  SudokuX is basically a normal sudoku with added constraint that both main and side diagonal is considered
+  a grid. Here we had to introduce two new grids (\<mm> and \<ss>) since the central square (that would be
+  square (5, 5) in Sudoku9) which is a part of both diagonals, would merge them into one big grid due
+  to transitivity of both gird-diagonals
+\<close>
+locale SudokuX = Sudoku + 
+  fixes mainDiag :: "number \<Rightarrow> number \<Rightarrow> bool" ("\<mm>")
+  fixes sideDiag :: "number \<Rightarrow> number \<Rightarrow> bool" ("\<ss>")
+
+  assumes Reflexive_Main_Diag:  "\<forall>x.(\<mm> x x)"
+  assumes Symmetric_Main_Diag:  "\<forall>x y.(\<mm> x y \<longrightarrow> \<mm> y x)"
+  assumes Transitive_Main_Diag: "\<forall>x y z.(m x y \<and> \<mm> y z \<longrightarrow> \<mm> x z)"
+
+  assumes Reflexive_Side_Diag:  "\<forall>x.(\<ss> x x)"
+  assumes Symmetric_Side_Diag:  "\<forall>x y.(\<ss> x y \<longrightarrow> \<ss> y x)"
+  assumes Transitive_Side_Diag: "\<forall>x y z.(\<ss> x y \<and> \<ss> y z \<longrightarrow> \<ss> x z)"
+
+
+locale JigSawSudoku = Sudoku +
+  constrains region :: "('a \<times> 'a) \<Rightarrow> ('a \<times> 'a) \<Rightarrow> bool"
+
+
 
 
 
